@@ -416,8 +416,10 @@ struct SalmEngine::Impl {
                ggml_backend_cuda_serving_supported(bm.gpu_backend_handle());
 #endif
         // MTP rolls drafts back through the batched path's replay rows; on upstream llama.cpp the
-        // engine compacts slot ids, which cannot carry the drafter's state.
-        if (!fast)
+        // engine compacts slot ids, which cannot carry the drafter's state. With one decode slot
+        // there is nothing to compact, and upstream's recurrent snapshots (n_rs_seq) roll back
+        // the Mamba state of rejected drafts.
+        if (!fast && cfg.max_sequences > 1)
             cfg.mtp_draft = 0;
         // The encoder overlaps decoding on its own thread and stream (fast path). For word
         // timestamps it keeps the CTC head's output of those requests only, on the device; the
@@ -620,6 +622,8 @@ struct SalmEngine::Impl {
         }
         cp.samplers = seq_sampler_cfg.data();
         cp.n_samplers = seq_sampler_cfg.size();
+        if (!fast && cfg.mtp_draft > 0)
+            cp.n_rs_seq = static_cast<uint32_t>(cfg.mtp_draft + 1);
         ctx = llama_init_from_model(model, cp);
         if (!ctx)
             throw std::runtime_error("failed to create llama context");
