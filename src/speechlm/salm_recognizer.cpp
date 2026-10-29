@@ -77,6 +77,9 @@ engine_config(const asr::RecognizerConfig& c) {
     out.dflash_path = s.dflash_path;
     out.cpu_moe = s.cpu_moe;
     out.cpu_moe_layers = s.cpu_moe_layers;
+    out.moe_stream_slots = s.moe_stream_slots;
+    out.moe_stream_mib = s.moe_stream_mib;
+    out.moe_stream_io_threads = s.moe_stream_io_threads;
     return out;
 }
 

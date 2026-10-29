@@ -68,6 +68,11 @@ struct SalmConfig {
     // from disk on use), so a decoder larger than GPU memory runs; everything else on the GPU.
     bool cpu_moe = false;
     std::string cpu_moe_layers;  // "a-b,c": cpu_moe for these layers only
+    // Expert streaming (patched llama.cpp, PR 25294): routed experts are read from the file on
+    // demand into a device cache of moe_stream_slots experts per layer (or moe_stream_mib in all).
+    int moe_stream_slots = 0;
+    int moe_stream_mib = 0;
+    int moe_stream_io_threads = 0;
     int encoder_max_batch = 16;  // windows per encoder graph launch
     // Audio seconds encoded but not yet admitted (ready queue + encoder calls in flight). Their
     // projection stays on the device (n_embd floats per 80 ms frame, about 134 KB per second), so

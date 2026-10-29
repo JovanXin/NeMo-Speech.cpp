@@ -133,7 +133,8 @@ void
 llama_log_cb(ggml_log_level level, const char* text, void*) {
     if (level == GGML_LOG_LEVEL_ERROR && text && std::strstr(text, "CUDA error: out of memory"))
         g_cuda_out_of_memory.store(true);
-    if (level >= GGML_LOG_LEVEL_WARN)
+    static const bool prof = std::getenv("NEMO_SALM_PROFILE") != nullptr;
+    if (level >= GGML_LOG_LEVEL_WARN || (prof && text && std::strstr(text, "stream")))
         std::fputs(text, stderr);
 }
 
@@ -518,6 +519,13 @@ struct SalmEngine::Impl {
             embedding_overrides[fast ? 1 : 0] = {
                 cpu_moe_pattern.c_str(), ggml_backend_dev_buffer_type(cpu)};
             mp.tensor_buft_overrides = embedding_overrides;
+        }
+        if (cfg.moe_stream_slots > 0 || cfg.moe_stream_mib > 0) {
+            mp.moe_stream = true;
+            mp.moe_stream_slots = static_cast<uint32_t>(std::max(0, cfg.moe_stream_slots));
+            mp.moe_stream_budget = static_cast<uint64_t>(std::max(0, cfg.moe_stream_mib)) << 20;
+            mp.moe_stream_io_threads = cfg.moe_stream_io_threads;
+            mp.load_mode = LLAMA_LOAD_MODE_NONE;
         }
         model = llama_model_load_from_file(cfg.llm_path.c_str(), mp);
         if (!model)
@@ -946,8 +954,11 @@ struct SalmEngine::Impl {
         if (ctx)
             llama_free(ctx);
         for (auto* smpl : seq_samplers) llama_sampler_free(smpl);
-        if (model)
+        if (model) {
+            if (std::getenv("NEMO_SALM_PROFILE") && (cfg.moe_stream_slots > 0 || cfg.moe_stream_mib > 0))
+                llama_moe_stream_print_stats(model);
             llama_model_free(model);
+        }
     }
 
     static ggml_runtime::Params make_params(const SalmConfig& c) {

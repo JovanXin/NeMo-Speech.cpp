@@ -54,6 +54,9 @@ struct SalmBackendConfig {
     std::string dflash_path;
     bool cpu_moe = false;
     std::string cpu_moe_layers;
+    int moe_stream_slots = 0;
+    int moe_stream_mib = 0;
+    int moe_stream_io_threads = 0;
     void Register(common::ParameterParser& p) {
         p.Register(
             "encoder_path", &encoder_path,
@@ -83,6 +86,13 @@ struct SalmBackendConfig {
         p.Register(
             "cpu_moe_layers", &cpu_moe_layers,
             "SALM: like cpu_moe, for these decoder layers only (e.g. \"0-20,40\")");
+        p.Register(
+            "moe_stream_slots", &moe_stream_slots,
+            "SALM: stream routed experts from disk into a GPU cache of N experts per layer (0 = off)");
+        p.Register(
+            "moe_stream_mib", &moe_stream_mib,
+            "SALM: like moe_stream_slots, sized as a total cache budget in MiB");
+        p.Register("moe_stream_io_threads", &moe_stream_io_threads, "SALM: expert-streaming I/O threads");
     }
 };
 
