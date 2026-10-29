@@ -45,6 +45,48 @@
 #define SALM_FAST_PATH 0
 #endif
 
+
+// NEMO_SALM_PROFILE=1: wall time per phase (encoder windows, prefill and decode llama_decode
+// calls), printed to stderr at exit.
+namespace salm_prof {
+struct Acc {
+    std::atomic<long long> us{0}, calls{0}, toks{0};
+};
+inline Acc enc, prefill, dec;
+inline bool on() {
+    static const bool v = [] {
+        const bool e = std::getenv("NEMO_SALM_PROFILE") != nullptr;
+        if (e)
+            std::atexit([] {
+                auto pr = [](const char* n, Acc& a) {
+                    std::fprintf(stderr, "[prof] %-8s %8.2f s  calls=%lld tokens=%lld\n", n,
+                                 a.us.load() / 1e6, a.calls.load(), a.toks.load());
+                };
+                pr("encoder", enc);
+                pr("prefill", prefill);
+                pr("decode", dec);
+            });
+        return e;
+    }();
+    return v;
+}
+struct Timer {
+    Acc* a;
+    long long n;
+    std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
+    Timer(Acc& acc, long long tokens) : a(on() ? &acc : nullptr), n(tokens) {}
+    ~Timer() {
+        if (!a)
+            return;
+        a->us += std::chrono::duration_cast<std::chrono::microseconds>(
+                     std::chrono::steady_clock::now() - t0)
+                     .count();
+        a->calls++;
+        a->toks += n;
+    }
+};
+}  // namespace salm_prof
+
 namespace nemo_speech::speechlm {
 
 #if !defined(_WIN32)
@@ -1155,6 +1197,7 @@ struct SalmEngine::Impl {
                     }
                     evidence = evidence && pee.ctc();
                     const int b_pad = pee.batch_pad(static_cast<int>(batch.size()));
+                    salm_prof::Timer prof_t(salm_prof::enc, static_cast<long long>(batch.size()));
                     auto outs = pee.encode_batch(
                         *store, frames, stats, lens, blen, evidence, external ? &p80 : nullptr,
                         evidence ? &sinks : nullptr, b_pad);
@@ -1226,6 +1269,7 @@ struct SalmEngine::Impl {
         char tag[64];
         std::snprintf(tag, sizeof(tag), "llama_decode n=%d%s", b.n_tokens, b.embd ? " embd" : "");
         ggml_nvtx::range nvtx_r(tag);
+        salm_prof::Timer prof_t(b.embd || b.n_tokens > 16 ? salm_prof::prefill : salm_prof::dec, b.n_tokens);
         const int rc = llama_decode(ctx, b);
         if (rc != 0)
             throw std::runtime_error("llama_decode failed with " + std::to_string(rc));
