@@ -9,7 +9,8 @@
 	url = https://github.com/kpu/kenlm.git
 [submodule "llama.cpp"]
 	path = llama.cpp
-	url = https://github.com/ggml-org/llama.cpp.git
+	url = https://github.com/JovanXin/llama.cpp.git
+	branch = apple-16gb-moe-stream
 [submodule "open_jtalk"]
 	path = third_party/open_jtalk
 	url = https://github.com/r9y9/open_jtalk.git
