@@ -52,6 +52,7 @@ struct SalmBackendConfig {
     int max_new_tokens = 1024;
     int mtp_draft = 7;
     std::string dflash_path;
+    bool cpu_moe = false;
     void Register(common::ParameterParser& p) {
         p.Register(
             "encoder_path", &encoder_path,
@@ -74,6 +75,10 @@ struct SalmBackendConfig {
         p.Register(
             "dflash_path", &dflash_path,
             "SALM DFlash2 drafter GGUF: drafts mtp_draft tokens per step instead of MTP");
+        p.Register(
+            "cpu_moe", &cpu_moe,
+            "SALM: keep the routed experts memory-mapped on the CPU (paged from disk), the rest on "
+            "the GPU");
     }
 };
 

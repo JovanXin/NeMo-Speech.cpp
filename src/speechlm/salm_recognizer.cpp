@@ -75,6 +75,7 @@ engine_config(const asr::RecognizerConfig& c) {
     out.max_new_tokens = s.max_new_tokens;
     out.mtp_draft = s.mtp_draft;
     out.dflash_path = s.dflash_path;
+    out.cpu_moe = s.cpu_moe;
     return out;
 }
 

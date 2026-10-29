@@ -180,7 +180,7 @@ constexpr size_t kEncoderAhead = 256;
 
 struct SalmEngine::Impl {
     SalmConfig cfg;
-    llama_model_tensor_buft_override embedding_overrides[2] = {};
+    llama_model_tensor_buft_override embedding_overrides[3] = {};  // null-terminated
     ggml_backend_dev_t decoder_devices[2] = {};  // the decoder's GPU (null-terminated list)
     ggml_runtime::BackendManager bm;
     // Batched serving path (SALM_FAST_PATH builds on a CUDA GPU with a Nemotron-H MoE decoder):
@@ -445,6 +445,16 @@ struct SalmEngine::Impl {
                 throw std::runtime_error("embedding GPU device not found");
             embedding_overrides[0] = {
                 "token_embd\\.weight", ggml_backend_dev_buffer_type(decoder_devices[0])};
+            mp.tensor_buft_overrides = embedding_overrides;
+        }
+        if (cfg.cpu_moe && cfg.gpu >= 0) {
+            auto cpu = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
+            if (!cpu)
+                throw std::runtime_error("cpu_moe: CPU device not found");
+            mp.load_mode = LLAMA_LOAD_MODE_MMAP;
+            setenv("LLAMA_NO_DEVICE_MMAP", "1", 0);  // patched llama.cpp: map only the CPU buffers
+            embedding_overrides[fast ? 1 : 0] = {
+                "\\.ffn_(up|down|gate)_exps\\.", ggml_backend_dev_buffer_type(cpu)};
             mp.tensor_buft_overrides = embedding_overrides;
         }
         model = llama_model_load_from_file(cfg.llm_path.c_str(), mp);
