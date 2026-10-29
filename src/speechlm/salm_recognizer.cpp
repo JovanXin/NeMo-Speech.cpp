@@ -76,6 +76,7 @@ engine_config(const asr::RecognizerConfig& c) {
     out.mtp_draft = s.mtp_draft;
     out.dflash_path = s.dflash_path;
     out.cpu_moe = s.cpu_moe;
+    out.cpu_moe_layers = s.cpu_moe_layers;
     return out;
 }
 

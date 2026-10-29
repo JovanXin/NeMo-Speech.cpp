@@ -53,6 +53,7 @@ struct SalmBackendConfig {
     int mtp_draft = 7;
     std::string dflash_path;
     bool cpu_moe = false;
+    std::string cpu_moe_layers;
     void Register(common::ParameterParser& p) {
         p.Register(
             "encoder_path", &encoder_path,
@@ -79,6 +80,9 @@ struct SalmBackendConfig {
             "cpu_moe", &cpu_moe,
             "SALM: keep the routed experts memory-mapped on the CPU (paged from disk), the rest on "
             "the GPU");
+        p.Register(
+            "cpu_moe_layers", &cpu_moe_layers,
+            "SALM: like cpu_moe, for these decoder layers only (e.g. \"0-20,40\")");
     }
 };
 

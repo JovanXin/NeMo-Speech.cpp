@@ -181,6 +181,7 @@ constexpr size_t kEncoderAhead = 256;
 struct SalmEngine::Impl {
     SalmConfig cfg;
     llama_model_tensor_buft_override embedding_overrides[3] = {};  // null-terminated
+    std::string cpu_moe_pattern;  // the expert override's regex, alive while loading
     ggml_backend_dev_t decoder_devices[2] = {};  // the decoder's GPU (null-terminated list)
     ggml_runtime::BackendManager bm;
     // Batched serving path (SALM_FAST_PATH builds on a CUDA GPU with a Nemotron-H MoE decoder):
@@ -447,14 +448,33 @@ struct SalmEngine::Impl {
                 "token_embd\\.weight", ggml_backend_dev_buffer_type(decoder_devices[0])};
             mp.tensor_buft_overrides = embedding_overrides;
         }
-        if (cfg.cpu_moe && cfg.gpu >= 0) {
+        if ((cfg.cpu_moe || !cfg.cpu_moe_layers.empty()) && cfg.gpu >= 0) {
             auto cpu = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
             if (!cpu)
                 throw std::runtime_error("cpu_moe: CPU device not found");
             mp.load_mode = LLAMA_LOAD_MODE_MMAP;
             setenv("LLAMA_NO_DEVICE_MMAP", "1", 0);  // patched llama.cpp: map only the CPU buffers
+            std::string layers = "\\d+";
+            if (!cfg.cpu_moe) {  // "a-b,c" -> "(a|a+1|...|b|c)"
+                layers.clear();
+                size_t pos = 0;
+                while (pos < cfg.cpu_moe_layers.size()) {
+                    size_t end = cfg.cpu_moe_layers.find(',', pos);
+                    if (end == std::string::npos)
+                        end = cfg.cpu_moe_layers.size();
+                    const std::string item = cfg.cpu_moe_layers.substr(pos, end - pos);
+                    const size_t dash = item.find('-');
+                    const int lo = std::stoi(item.substr(0, dash));
+                    const int hi = dash == std::string::npos ? lo : std::stoi(item.substr(dash + 1));
+                    for (int l = lo; l <= hi; l++)
+                        layers += (layers.empty() ? "" : "|") + std::to_string(l);
+                    pos = end + 1;
+                }
+                layers = "(" + layers + ")";
+            }
+            cpu_moe_pattern = "^blk\\." + layers + "\\.ffn_(up|down|gate)_exps\\.";
             embedding_overrides[fast ? 1 : 0] = {
-                "\\.ffn_(up|down|gate)_exps\\.", ggml_backend_dev_buffer_type(cpu)};
+                cpu_moe_pattern.c_str(), ggml_backend_dev_buffer_type(cpu)};
             mp.tensor_buft_overrides = embedding_overrides;
         }
         model = llama_model_load_from_file(cfg.llm_path.c_str(), mp);
