@@ -586,6 +586,8 @@ struct SalmEngine::Impl {
         cp.n_ctx = static_cast<uint32_t>(cfg.n_ctx_per_sequence) * cfg.max_sequences;
         cp.n_batch = cfg.n_batch;
         cp.n_ubatch = fast ? cfg.n_batch : std::min(cfg.n_batch, kUpstreamUbatch);
+        if (cfg.n_ubatch > 0)
+            cp.n_ubatch = std::min(cfg.n_ubatch, cfg.n_batch);
         cp.n_threads = cfg.threads;
         cp.n_threads_batch = cfg.threads;
         // One KV pool on every path: a sequence may use cells up to max_context while the pool

@@ -80,6 +80,7 @@ engine_config(const asr::RecognizerConfig& c) {
     out.moe_stream_slots = s.moe_stream_slots;
     out.moe_stream_mib = s.moe_stream_mib;
     out.moe_stream_io_threads = s.moe_stream_io_threads;
+    out.n_ubatch = s.n_ubatch;
     return out;
 }
 
