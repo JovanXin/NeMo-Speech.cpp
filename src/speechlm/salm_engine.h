@@ -75,6 +75,7 @@ struct SalmConfig {
     int moe_stream_io_threads = 0;
     // llama.cpp micro-batch; 0 = default. Larger means fewer passes over streamed experts in prefill.
     int n_ubatch = 0;
+    bool moe_stream_nocache = false;  // expert reads bypass the page cache
     int encoder_max_batch = 16;  // windows per encoder graph launch
     // Audio seconds encoded but not yet admitted (ready queue + encoder calls in flight). Their
     // projection stays on the device (n_embd floats per 80 ms frame, about 134 KB per second), so

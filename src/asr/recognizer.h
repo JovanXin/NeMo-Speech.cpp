@@ -58,6 +58,7 @@ struct SalmBackendConfig {
     int moe_stream_mib = 0;
     int moe_stream_io_threads = 0;
     int n_ubatch = 0;
+    bool moe_stream_nocache = false;
     void Register(common::ParameterParser& p) {
         p.Register(
             "encoder_path", &encoder_path,
@@ -94,6 +95,9 @@ struct SalmBackendConfig {
             "moe_stream_mib", &moe_stream_mib,
             "SALM: like moe_stream_slots, sized as a total cache budget in MiB");
         p.Register("moe_stream_io_threads", &moe_stream_io_threads, "SALM: expert-streaming I/O threads");
+        p.Register(
+            "moe_stream_nocache", &moe_stream_nocache,
+            "SALM: expert-streaming reads bypass the page cache (O_DIRECT / macOS F_NOCACHE)");
         p.Register(
             "n_ubatch", &n_ubatch,
             "SALM: llama.cpp micro-batch (0 = n_batch, capped at 512 on upstream paths)");

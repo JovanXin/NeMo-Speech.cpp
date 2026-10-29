@@ -527,6 +527,7 @@ struct SalmEngine::Impl {
             mp.moe_stream_slots = static_cast<uint32_t>(std::max(0, cfg.moe_stream_slots));
             mp.moe_stream_budget = static_cast<uint64_t>(std::max(0, cfg.moe_stream_mib)) << 20;
             mp.moe_stream_io_threads = cfg.moe_stream_io_threads;
+            mp.moe_stream_direct = cfg.moe_stream_nocache;
             mp.load_mode = LLAMA_LOAD_MODE_NONE;
         }
         model = llama_model_load_from_file(cfg.llm_path.c_str(), mp);
